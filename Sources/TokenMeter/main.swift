@@ -113,12 +113,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 }
 
 if CommandLine.arguments.contains("--print") {
+    if !Pricing.shared.isLoaded {
+        var done = false
+        Pricing.shared.refreshIfStale { done = true }
+        let deadline = Date().addingTimeInterval(15)
+        while !done && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.1)) }
+    }
     for type in Providers.all {
         let provider = type.init()
         provider.scan()
-        print("\(type.name) (wykryto: \(type.isDetected))")
+        print("\(type.name) (wykryto: \(type.isDetected), bez ceny: \(provider.totals.unpriced.sorted()))")
         for (day, u) in provider.totals.days.sorted(by: { $0.key < $1.key }) {
-            print("  \(day) in \(u.totalInput) (cache read \(u.cacheRead), write \(u.cacheWrite + u.cacheWrite1h)) out \(u.output)")
+            print("  \(day) $\(String(format: "%.2f", u.cost)) in \(u.totalInput) (cache read \(u.cacheRead), write \(u.cacheWrite + u.cacheWrite1h)) out \(u.output)")
         }
     }
     exit(0)

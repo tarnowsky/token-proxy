@@ -30,6 +30,12 @@ final class Tracker: ObservableObject {
 
     func scan() { instances.values.forEach { $0.scan() } }
 
+    /// Re-reads all logs from scratch, e.g. after prices changed.
+    func reload() {
+        instances = [:]
+        connected.forEach(start)
+    }
+
     /// Connected providers in the canonical order, with their totals.
     var active: [(type: any Provider.Type, totals: Totals)] {
         Providers.all.compactMap { type in instances[type.id].map { (type, $0.totals) } }

@@ -5,9 +5,9 @@ enum BarDisplay: String, CaseIterable {
 
     var label: String {
         switch self {
-        case .tokens: "Tokeny"
-        case .cost: "Koszt"
-        case .both: "Oba"
+        case .tokens: tr("Tokeny", "Tokens")
+        case .cost: tr("Koszt", "Cost")
+        case .both: tr("Oba", "Both")
         }
     }
 }
@@ -22,6 +22,9 @@ final class Tracker: ObservableObject {
     /// What the menu bar title shows for today.
     @Published var barDisplay: BarDisplay {
         didSet { UserDefaults.standard.set(barDisplay.rawValue, forKey: Self.barDisplayKey) }
+    }
+    @Published var language = Language.current {
+        didSet { Language.current = language }
     }
     private var instances: [String: any Provider] = [:]
 

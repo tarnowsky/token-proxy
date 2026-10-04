@@ -21,6 +21,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         tracker.$barDisplay.dropFirst().sink { [weak self] _ in
             DispatchQueue.main.async { self?.refresh() }
         }.store(in: &subscriptions)
+        tracker.$language.dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async {
+                self?.refresh()
+                self?.settingsWindow?.title = Self.settingsTitle
+            }
+        }.store(in: &subscriptions)
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.refresh() }
     }
 
@@ -32,8 +38,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         tracker.scan()
         let active = tracker.active
         if active.isEmpty {
-            statusItem.button?.title = "Tokeny"
-            statusItem.button?.toolTip = "Połącz się z narzędziem, żeby liczyć tokeny"
+            statusItem.button?.title = tr("Tokeny", "Tokens")
+            statusItem.button?.toolTip = tr("Połącz się z narzędziem, żeby liczyć tokeny", "Connect a tool to start counting tokens")
         } else {
             let today = active.map(\.totals.today).reduce(Usage(), +)
             let tokens = "↑\(fmt(today.totalInput)) ↓\(fmt(today.output))"
@@ -43,7 +49,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             case .cost: cost
             case .both: "\(tokens) \(cost)"
             }
-            statusItem.button?.toolTip = "Dziś: tokeny wejście ↑ / wyjście ↓, ≈ koszt wg cennika API"
+            statusItem.button?.toolTip = tr("Dziś: tokeny wejście ↑ / wyjście ↓, ≈ koszt wg cennika API",
+                                            "Today: input ↑ / output ↓ tokens, ≈ cost at API prices")
         }
     }
 
@@ -53,34 +60,34 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         let active = tracker.active
 
         if !active.isEmpty {
-            section(menu, "Dziś", active.map { ($0.type.name, $0.totals.today) })
+            section(menu, tr("Dziś", "Today"), active.map { ($0.type.name, $0.totals.today) })
             menu.addItem(.separator())
-            section(menu, "Od początku", active.map { ($0.type.name, $0.totals.allTime) })
-            note(menu, "≈ koszt wg cennika API, nie rachunek z subskrypcji")
-            let unpriced = Set(active.flatMap(\.totals.unpriced)).sorted()
-            if !unpriced.isEmpty { note(menu, "Bez ceny: " + unpriced.joined(separator: ", ")) }
+            section(menu, tr("Od początku", "All time"), active.map { ($0.type.name, $0.totals.allTime) })
+            note(menu, tr("≈ koszt wg cennika API, nie rachunek z subskrypcji", "≈ cost at API prices, not your subscription bill"))
+            let unpriced = Set(active.flatMap(\.totals.unpriced)).sorted().map { $0.isEmpty ? tr("nieznany model", "unknown model") : $0 }
+            if !unpriced.isEmpty { note(menu, tr("Bez ceny: ", "No price: ") + unpriced.joined(separator: ", ")) }
             menu.addItem(.separator())
         }
 
         for type in tracker.suggested {
-            let item = NSMenuItem(title: "Połącz z \(type.name)", action: #selector(connect(_:)), keyEquivalent: "")
+            let item = NSMenuItem(title: tr("Połącz z \(type.name)", "Connect to \(type.name)"), action: #selector(connect(_:)), keyEquivalent: "")
             item.target = self
             item.representedObject = type.id
             menu.addItem(item)
         }
         if active.isEmpty && tracker.suggested.isEmpty {
-            let item = NSMenuItem(title: "Nie wykryto żadnego narzędzia", action: nil, keyEquivalent: "")
+            let item = NSMenuItem(title: tr("Nie wykryto żadnego narzędzia", "No supported tools detected"), action: nil, keyEquivalent: "")
             item.isEnabled = false
             menu.addItem(item)
         }
         if !tracker.suggested.isEmpty || active.isEmpty { menu.addItem(.separator()) }
 
         if !active.isEmpty {
-            let settings = NSMenuItem(title: "Ustawienia…", action: #selector(openSettings), keyEquivalent: ",")
+            let settings = NSMenuItem(title: tr("Ustawienia…", "Settings…"), action: #selector(openSettings), keyEquivalent: ",")
             settings.target = self
             menu.addItem(settings)
         }
-        menu.addItem(NSMenuItem(title: "Zakończ", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        menu.addItem(NSMenuItem(title: tr("Zakończ", "Quit"), action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
     }
 
     @objc private func connect(_ sender: NSMenuItem) {
@@ -92,7 +99,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     @objc private func openSettings() {
         if settingsWindow == nil {
             let window = NSWindow(contentViewController: NSHostingController(rootView: SettingsView(tracker: tracker)))
-            window.title = "TokenMeter: ustawienia"
+            window.title = Self.settingsTitle
             window.styleMask = [.titled, .closable]
             window.isReleasedWhenClosed = false
             settingsWindow = window
@@ -101,6 +108,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         settingsWindow?.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
     }
+
+    private static var settingsTitle: String { tr("TokenMeter: ustawienia", "TokenMeter Settings") }
 
     private func section(_ menu: NSMenu, _ title: String, _ rows: [(String, Usage)]) {
         let header = NSMenuItem(title: title, action: nil, keyEquivalent: "")
@@ -111,7 +120,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             menu.addItem(row(name, usage, width: width))
         }
         if rows.count > 1 {
-            menu.addItem(row("Łącznie", rows.map(\.1).reduce(Usage(), +), width: width))
+            menu.addItem(row(tr("Łącznie", "Total"), rows.map(\.1).reduce(Usage(), +), width: width))
         }
     }
 
@@ -171,7 +180,7 @@ if CommandLine.arguments.contains("--print") {
     for type in Providers.all {
         let provider = type.init()
         provider.scan()
-        print("\(type.name) (wykryto: \(type.isDetected), bez ceny: \(provider.totals.unpriced.sorted()))")
+        print("\(type.name) (detected: \(type.isDetected), unpriced: \(provider.totals.unpriced.sorted()))")
         for (day, u) in provider.totals.days.sorted(by: { $0.key < $1.key }) {
             print("  \(day) $\(String(format: "%.2f", u.cost)) in \(u.totalInput) (cache read \(u.cacheRead), write \(u.cacheWrite + u.cacheWrite1h)) out \(u.output)")
         }

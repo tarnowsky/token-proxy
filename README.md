@@ -19,9 +19,9 @@ Status: **1.0.0-beta.1**, macOS 13+ only.
 
 Each menu row shows an estimated cost (≈ $), computed per model and per request from the [LiteLLM](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json) price table: uncached input, cache reads, cache writes (5 min and 1 h), and output are priced separately, with higher rates for long context. The price table is downloaded once a day to `~/Library/Application Support/TokenMeter/prices.json`.
 
-With a subscription (Claude Max/Pro, ChatGPT, Google account) this is the value of your usage at API prices, not what you are billed. Models without a price are listed in the menu under "Bez ceny" (no price).
+With a subscription (Claude Max/Pro, ChatGPT, Google account) this is the value of your usage at API prices, not what you are billed. Models without a price are listed in the menu under "No price".
 
-In Settings you can choose what the menu bar shows: tokens, cost, or both.
+In Settings you can choose what the menu bar shows (tokens, cost, or both) and the language (English, Polish, or the system language, which is the default).
 
 ## Running
 

@@ -34,7 +34,7 @@ struct Totals {
         if let cost = Pricing.shared.cost(usage, model: model) {
             usage.cost = cost
         } else if !usage.isEmpty {
-            unpriced.insert(model ?? "nieznany model")
+            unpriced.insert(model ?? "") // "" = unknown model
         }
         days[day, default: Usage()] = days[day, default: Usage()] + usage
     }

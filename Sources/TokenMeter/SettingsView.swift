@@ -22,6 +22,10 @@ struct SettingsView: View {
             Text("Koszt to szacunek wg cennika API (LiteLLM). Przy subskrypcji to wartość zużycia, nie rachunek.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+            Text("TokenMeter \(appVersion)")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+                .frame(maxWidth: .infinity, alignment: .trailing)
         }
         .padding(20)
         .frame(width: 380)

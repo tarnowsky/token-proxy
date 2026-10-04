@@ -2,6 +2,8 @@ import AppKit
 import Combine
 import SwiftUI
 
+let appVersion = "1.0.0-beta.1"
+
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
     private let tracker = Tracker()
@@ -152,6 +154,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         default: "\(n)"
         }
     }
+}
+
+if CommandLine.arguments.contains("--version") {
+    print("TokenMeter \(appVersion)")
+    exit(0)
 }
 
 if CommandLine.arguments.contains("--print") {

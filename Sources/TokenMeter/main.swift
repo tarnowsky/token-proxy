@@ -1,4 +1,5 @@
 import AppKit
+import Combine
 import SwiftUI
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
@@ -6,6 +7,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     private let tracker = Tracker()
     private var timer: Timer?
     private var settingsWindow: NSWindow?
+    private var subscriptions = Set<AnyCancellable>()
     private let font = NSFont.monospacedDigitSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -14,6 +16,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
         menu.delegate = self
         statusItem.menu = menu
         refresh()
+        tracker.$barDisplay.dropFirst().sink { [weak self] _ in
+            DispatchQueue.main.async { self?.refresh() }
+        }.store(in: &subscriptions)
         timer = Timer.scheduledTimer(withTimeInterval: 2, repeats: true) { [weak self] _ in self?.refresh() }
     }
 
@@ -29,8 +34,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusItem.button?.toolTip = "Połącz się z narzędziem, żeby liczyć tokeny"
         } else {
             let today = active.map(\.totals.today).reduce(Usage(), +)
-            statusItem.button?.title = "↑\(fmt(today.totalInput)) ↓\(fmt(today.output))"
-            statusItem.button?.toolTip = "Tokeny dziś: wejście ↑ / wyjście ↓"
+            let tokens = "↑\(fmt(today.totalInput)) ↓\(fmt(today.output))"
+            let cost = "≈\(fmtCost(today.cost))"
+            statusItem.button?.title = switch tracker.barDisplay {
+            case .tokens: tokens
+            case .cost: cost
+            case .both: "\(tokens) \(cost)"
+            }
+            statusItem.button?.toolTip = "Dziś: tokeny wejście ↑ / wyjście ↓, ≈ koszt wg cennika API"
         }
     }
 

@@ -13,6 +13,15 @@ struct SettingsView: View {
             Text("Połączenie oznacza tylko czytanie lokalnych logów danego narzędzia. Nic nie jest wysyłane.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+
+            Divider()
+            Picker("Na pasku menu (dziś)", selection: $tracker.barDisplay) {
+                ForEach(BarDisplay.allCases, id: \.self) { Text($0.label) }
+            }
+            .pickerStyle(.segmented)
+            Text("Koszt to szacunek wg cennika API (LiteLLM). Przy subskrypcji to wartość zużycia, nie rachunek.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
         .padding(20)
         .frame(width: 380)

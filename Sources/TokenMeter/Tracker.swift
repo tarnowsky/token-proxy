@@ -1,15 +1,33 @@
 import Foundation
 
+enum BarDisplay: String, CaseIterable {
+    case tokens, cost, both
+
+    var label: String {
+        switch self {
+        case .tokens: "Tokeny"
+        case .cost: "Koszt"
+        case .both: "Oba"
+        }
+    }
+}
+
 /// Owns the connected providers. "Connecting" only enables reading that agent's local logs;
 /// the choice is remembered across launches.
 final class Tracker: ObservableObject {
     private static let defaultsKey = "connectedProviders"
+    private static let barDisplayKey = "barDisplay"
 
     @Published private(set) var connected: [String]
+    /// What the menu bar title shows for today.
+    @Published var barDisplay: BarDisplay {
+        didSet { UserDefaults.standard.set(barDisplay.rawValue, forKey: Self.barDisplayKey) }
+    }
     private var instances: [String: any Provider] = [:]
 
     init() {
         connected = UserDefaults.standard.stringArray(forKey: Self.defaultsKey) ?? []
+        barDisplay = UserDefaults.standard.string(forKey: Self.barDisplayKey).flatMap(BarDisplay.init) ?? .tokens
         connected.forEach(start)
     }
 

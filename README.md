@@ -1,33 +1,33 @@
 # TokenMeter
 
-Widget w pasku menu macOS, który zlicza tokeny wejściowe i wyjściowe zużyte przez agentów AI uruchamianych na tym komputerze.
+A macOS menu bar widget that counts input and output tokens used by AI coding agents running on this machine.
 
-Nie ma proxy: aplikacja co 2 s doczytuje nowe dane z lokalnych logów sesji. „Połączenie” z providerem oznacza tylko włączenie czytania jego logów (zapamiętywane między uruchomieniami). W menu pojawia się „Połącz z …” dla narzędzi wykrytych na komputerze; pełna lista jest w Ustawieniach.
+There is no proxy: every 2 seconds the app reads new data from the agents' local session logs. "Connecting" a provider only turns on reading its logs (remembered across launches). The menu offers "Connect to …" for tools detected on this machine; the full list is in Settings.
 
-| Provider | Logi | Uwagi |
+| Provider | Logs | Notes |
 |---|---|---|
-| Claude Code | `~/.claude/projects/**/*.jsonl` | `message.usage`, deduplikacja po `message.id` + `requestId` |
-| Codex | `~/.codex/sessions/**/*.jsonl` | zdarzenia `token_count` (`last_token_usage`), powtórzenia i suma odziedziczona po sesji nadrzędnej są pomijane |
-| Gemini CLI | `~/.gemini/tmp/*/chats/*.json` | `tokens` w wiadomościach, deduplikacja po `id` (te same sesje bywają w dwóch katalogach) |
-| Grok Build | `~/.grok/sessions/**/updates.jsonl` | eksperymentalne: format nieudokumentowany, niesprawdzony na prawdziwych danych |
+| Claude Code | `~/.claude/projects/**/*.jsonl` | `message.usage`, deduplicated by `message.id` + `requestId` |
+| Codex | `~/.codex/sessions/**/*.jsonl` | `token_count` events (`last_token_usage`); repeated events and totals inherited from a parent session are skipped |
+| Gemini CLI | `~/.gemini/tmp/*/chats/*.json` | `tokens` on each message, deduplicated by `id` (the same session can exist in two directories) |
+| Grok Build | `~/.grok/sessions/**/updates.jsonl` | experimental: undocumented format, not yet verified on real data |
 
-Wejście (↑) obejmuje tokeny z cache (odczyt i zapis), wyjście (↓) obejmuje tokeny reasoning/thinking. Nowy provider to jedna klasa w `Sources/TokenMeter/Providers/` dopisana do `Providers.all`.
+Input (↑) includes cached tokens (reads and writes), output (↓) includes reasoning/thinking tokens. A new provider is one class in `Sources/TokenMeter/Providers/` added to `Providers.all`.
 
-Status: **1.0.0-beta.1**, tylko macOS 13+.
+Status: **1.0.0-beta.1**, macOS 13+ only.
 
-## Koszt
+## Cost
 
-Przy każdym wierszu menu jest szacunkowy koszt (≈ $) liczony per model i per zapytanie z cennika [LiteLLM](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json): osobno zwykłe wejście, odczyt z cache, zapis do cache (5 min i 1 h) i wyjście, z wyższymi stawkami dla długiego kontekstu. Cennik jest pobierany raz dziennie do `~/Library/Application Support/TokenMeter/prices.json`.
+Each menu row shows an estimated cost (≈ $), computed per model and per request from the [LiteLLM](https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json) price table: uncached input, cache reads, cache writes (5 min and 1 h), and output are priced separately, with higher rates for long context. The price table is downloaded once a day to `~/Library/Application Support/TokenMeter/prices.json`.
 
-Przy subskrypcji (Claude Max/Pro, ChatGPT, konto Google) to wartość zużycia wg cennika API, a nie rachunek. Modele bez ceny są wypisane w menu jako „Bez ceny”.
+With a subscription (Claude Max/Pro, ChatGPT, Google account) this is the value of your usage at API prices, not what you are billed. Models without a price are listed in the menu under "Bez ceny" (no price).
 
-W Ustawieniach można wybrać, co pokazuje pasek menu: tokeny, koszt albo oba.
+In Settings you can choose what the menu bar shows: tokens, cost, or both.
 
-## Uruchomienie
+## Running
 
 ```sh
 swift build -c release
-.build/release/TokenMeter            # widget w pasku menu
-.build/release/TokenMeter --print    # sumy dzienne z kosztem w terminalu
+.build/release/TokenMeter            # menu bar widget
+.build/release/TokenMeter --print    # daily totals with cost in the terminal
 .build/release/TokenMeter --version
 ```

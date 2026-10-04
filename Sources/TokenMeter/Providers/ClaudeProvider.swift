@@ -31,10 +31,12 @@ final class ClaudeProvider: Provider {
             guard seenIds.insert(key).inserted else { return }
         }
 
-        let input = Files.int(usage["input_tokens"])
-            + Files.int(usage["cache_creation_input_tokens"])
-            + Files.int(usage["cache_read_input_tokens"])
-        totals.add(Usage(input: input, output: Files.int(usage["output_tokens"])),
-                   day: Day.from(timestamp: json["timestamp"]))
+        let cacheWrite1h = Files.int((usage["cache_creation"] as? [String: Any])?["ephemeral_1h_input_tokens"])
+        let u = Usage(input: Files.int(usage["input_tokens"]),
+                      cacheRead: Files.int(usage["cache_read_input_tokens"]),
+                      cacheWrite: Files.int(usage["cache_creation_input_tokens"]) - cacheWrite1h,
+                      cacheWrite1h: cacheWrite1h,
+                      output: Files.int(usage["output_tokens"]))
+        totals.add(u, model: message["model"] as? String, day: Day.from(timestamp: json["timestamp"]))
     }
 }

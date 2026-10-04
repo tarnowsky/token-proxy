@@ -25,7 +25,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             statusItem.button?.toolTip = "Połącz się z narzędziem, żeby liczyć tokeny"
         } else {
             let today = active.map(\.totals.today).reduce(Usage(), +)
-            statusItem.button?.title = "↑\(fmt(today.input)) ↓\(fmt(today.output))"
+            statusItem.button?.title = "↑\(fmt(today.totalInput)) ↓\(fmt(today.output))"
             statusItem.button?.toolTip = "Tokeny dziś: wejście ↑ / wyjście ↓"
         }
     }
@@ -97,7 +97,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func row(_ label: String, _ u: Usage, width: Int) -> NSMenuItem {
         let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        let text = "\(label.padding(toLength: max(width, 7), withPad: " ", startingAt: 0))  ↑ \(fmt(u.input))   ↓ \(fmt(u.output))"
+        let text = "\(label.padding(toLength: max(width, 7), withPad: " ", startingAt: 0))  ↑ \(fmt(u.totalInput))   ↓ \(fmt(u.output))"
         item.attributedTitle = NSAttributedString(string: text, attributes: [.font: font])
         return item
     }
@@ -118,7 +118,7 @@ if CommandLine.arguments.contains("--print") {
         provider.scan()
         print("\(type.name) (wykryto: \(type.isDetected))")
         for (day, u) in provider.totals.days.sorted(by: { $0.key < $1.key }) {
-            print("  \(day) in \(u.input) out \(u.output)")
+            print("  \(day) in \(u.totalInput) (cache read \(u.cacheRead), write \(u.cacheWrite + u.cacheWrite1h)) out \(u.output)")
         }
     }
     exit(0)

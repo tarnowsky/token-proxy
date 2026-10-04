@@ -25,7 +25,7 @@ final class GrokProvider: Provider {
               let json = Files.parse(Data(line.utf8)),
               let usage = findUsage(in: json)
         else { return }
-        totals.add(usage, day: Day.from(timestamp: json["timestamp"]))
+        totals.add(usage, model: nil, day: Day.from(timestamp: json["timestamp"]))
     }
 
     private func findUsage(in value: Any) -> Usage? {

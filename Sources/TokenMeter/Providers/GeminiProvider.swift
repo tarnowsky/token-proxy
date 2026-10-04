@@ -35,9 +35,11 @@ final class GeminiProvider: Provider {
             else { continue }
 
             // `input` already includes `cached`; thoughts are billed as output.
-            let usage = Usage(input: Files.int(tokens["input"]) + Files.int(tokens["tool"]),
+            let cached = Files.int(tokens["cached"])
+            let usage = Usage(input: Files.int(tokens["input"]) - cached + Files.int(tokens["tool"]),
+                              cacheRead: cached,
                               output: Files.int(tokens["output"]) + Files.int(tokens["thoughts"]))
-            totals.add(usage, day: Day.from(timestamp: message["timestamp"]))
+            totals.add(usage, model: message["model"] as? String, day: Day.from(timestamp: message["timestamp"]))
         }
     }
 }

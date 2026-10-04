@@ -19,6 +19,8 @@ final class Pricing {
 
     private var table: [String: [String: Any]] = [:]
     private var resolved: [String: ModelPrice?] = [:]
+    private var downloading = false
+    private var lastAttempt = Date.distantPast
 
     var isLoaded: Bool { !table.isEmpty }
 
@@ -31,11 +33,18 @@ final class Pricing {
     func refreshIfStale(onUpdate: @escaping () -> Void) {
         let modified = (try? cacheFile.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate
         if let modified, Date().timeIntervalSince(modified) < Self.maxAge, isLoaded { return }
+        guard !downloading, Date().timeIntervalSince(lastAttempt) > 600 else { return }
+        downloading = true
+        lastAttempt = Date()
 
         URLSession.shared.dataTask(with: Self.source) { [weak self] data, _, _ in
-            guard let self, let data, (try? JSONSerialization.jsonObject(with: data)) is [String: Any] else { return }
-            try? data.write(to: self.cacheFile, options: .atomic)
+            let valid = data.flatMap { try? JSONSerialization.jsonObject(with: $0) } is [String: Any]
+            if valid, let self, let data { try? data.write(to: self.cacheFile, options: .atomic) }
             DispatchQueue.main.async {
+                guard let self else { return }
+                self.downloading = false
+                // On failure, keep the stale table and retry on the next call.
+                guard valid, let data else { return }
                 self.load(data)
                 onUpdate()
             }

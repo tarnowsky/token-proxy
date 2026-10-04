@@ -18,6 +18,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
     }
 
     private func refresh() {
+        Pricing.shared.refreshIfStale { [weak self] in
+            self?.tracker.reload()
+            self?.refresh()
+        }
         tracker.scan()
         let active = tracker.active
         if active.isEmpty {
@@ -39,6 +43,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
             section(menu, "Dziś", active.map { ($0.type.name, $0.totals.today) })
             menu.addItem(.separator())
             section(menu, "Od początku", active.map { ($0.type.name, $0.totals.allTime) })
+            note(menu, "≈ koszt wg cennika API, nie rachunek z subskrypcji")
+            let unpriced = Set(active.flatMap(\.totals.unpriced)).sorted()
+            if !unpriced.isEmpty { note(menu, "Bez ceny: " + unpriced.joined(separator: ", ")) }
             menu.addItem(.separator())
         }
 
@@ -97,9 +104,33 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate {
 
     private func row(_ label: String, _ u: Usage, width: Int) -> NSMenuItem {
         let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
-        let text = "\(label.padding(toLength: max(width, 7), withPad: " ", startingAt: 0))  ↑ \(fmt(u.totalInput))   ↓ \(fmt(u.output))"
+        let name = label.padding(toLength: max(width, 7), withPad: " ", startingAt: 0)
+        let text = "\(name)  ↑ \(pad(fmt(u.totalInput)))  ↓ \(pad(fmt(u.output)))  ≈ \(fmtCost(u.cost))"
         item.attributedTitle = NSAttributedString(string: text, attributes: [.font: font])
         return item
+    }
+
+    private func note(_ menu: NSMenu, _ text: String) {
+        let item = NSMenuItem(title: "", action: nil, keyEquivalent: "")
+        item.attributedTitle = NSAttributedString(string: text, attributes: [
+            .font: NSFont.systemFont(ofSize: NSFont.smallSystemFontSize),
+            .foregroundColor: NSColor.secondaryLabelColor,
+        ])
+        item.isEnabled = false
+        menu.addItem(item)
+    }
+
+    private func pad(_ s: String) -> String {
+        String(repeating: " ", count: max(0, 6 - s.count)) + s
+    }
+
+    private func fmtCost(_ usd: Double) -> String {
+        switch usd {
+        case 1000...: String(format: "$%.0f", usd)
+        case 0.01...: String(format: "$%.2f", usd)
+        case 0: "$0"
+        default: "<$0.01"
+        }
     }
 
     private func fmt(_ n: Int) -> String {

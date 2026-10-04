@@ -1,7 +1,9 @@
 import Foundation
 
-/// Codex CLI: ~/.codex/sessions/**/*.jsonl, `token_count` events carry a cumulative
-/// `total_token_usage` per session; we count the delta between consecutive events.
+/// Codex CLI: ~/.codex/sessions/**/*.jsonl, `token_count` events carry the usage of the
+/// last request plus a cumulative session total. Events repeat without new usage, so one
+/// is counted only when the total moved. A forked or compacted session starts with the
+/// parent's total and an empty last usage, so the parent is not counted twice.
 /// The model comes from the preceding `turn_context` event.
 final class CodexProvider: Provider {
     static let id = "codex"
@@ -11,7 +13,7 @@ final class CodexProvider: Provider {
 
     private(set) var totals = Totals()
     private var tail = JSONLTail()
-    private var lastTotal: [URL: Usage] = [:]
+    private var lastTotal: [URL: Int] = [:]
     private var model: [URL: String] = [:]
 
     func scan() {
@@ -33,22 +35,22 @@ final class CodexProvider: Provider {
               let payload = json["payload"] as? [String: Any],
               payload["type"] as? String == "token_count",
               let info = payload["info"] as? [String: Any],
-              let total = info["total_token_usage"] as? [String: Any]
+              let total = info["total_token_usage"] as? [String: Any],
+              let last = info["last_token_usage"] as? [String: Any]
         else { return }
 
+        let totalTokens = Files.int(total["total_tokens"])
+        guard lastTotal[file] != totalTokens else { return }
+        lastTotal[file] = totalTokens
+
         // input_tokens includes cached reads and writes, output_tokens includes reasoning.
-        let cacheRead = Files.int(total["cached_input_tokens"])
-        let cacheWrite = Files.int(total["cache_write_input_tokens"])
-        let current = Usage(input: Files.int(total["input_tokens"]) - cacheRead - cacheWrite,
-                            cacheRead: cacheRead, cacheWrite: cacheWrite,
-                            output: Files.int(total["output_tokens"]))
-        let previous = lastTotal[file] ?? Usage()
-        lastTotal[file] = current
+        let cacheRead = Files.int(last["cached_input_tokens"])
+        let cacheWrite = Files.int(last["cache_write_input_tokens"])
+        let usage = Usage(input: Files.int(last["input_tokens"]) - cacheRead - cacheWrite,
+                          cacheRead: cacheRead, cacheWrite: cacheWrite,
+                          output: Files.int(last["output_tokens"]))
+        guard !usage.isEmpty else { return }
 
-        var delta = current - previous
-        if delta.hasNegative { delta = current } // counter reset
-        guard !delta.isEmpty else { return }
-
-        totals.add(delta, model: model[file], day: Day.from(timestamp: json["timestamp"]))
+        totals.add(usage, model: model[file], day: Day.from(timestamp: json["timestamp"]))
     }
 }
